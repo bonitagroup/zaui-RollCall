@@ -5,7 +5,7 @@ export const config = {
     {
       name: 'Ca sáng',
       checkInStart: '07:45',
-      checkInDeadline: '08:05',
+      checkInDeadline: '08:10',
       checkInEnd: '12:00',
       checkOutStart: '12:00',
       checkOutEnd: '12:30',

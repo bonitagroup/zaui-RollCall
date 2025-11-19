@@ -1,61 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Page, Box, Text, Button } from 'zmp-ui';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { userState, allUsersState, splitUsersState } from '@/states/state';
-import api from '@/lib/api';
-import { AdminHeader } from './header';
-import { AdminStats } from './start';
-import { UserRow } from './UserRow';
-import { SectionTitle } from '@/components/sectiontitle';
+import { useState } from 'react';
+import { Page, Box, Text } from 'zmp-ui';
+import { useRecoilValue } from 'recoil';
+import { userState } from '@/states/state';
+import PersonnelManagement from './management';
+import AttendanceManagement from './AttendanceManagement';
+import SalaryManagement from './salary/SalaryManagement';
+import LeaveManagement from './LeaveManagement';
 
-const AdminPage = () => {
+const AdminDashboard = () => {
   const admin = useRecoilValue(userState);
-  const setAllUsers = useSetRecoilState(allUsersState);
-
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('assigned');
-
-  const roles = [
-    'admin',
-    'Nhân viên kinh doanh',
-    'Marketing',
-    'Kỹ thuật',
-    'Thiết kế',
-    'Quản lý',
-    'Nhân sự',
-    'Kế toán',
-    'người dùng mới',
-  ];
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!admin || !admin.zalo_id) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const res: any = await api.get('/admin/users', {
-          params: { admin_zalo_id: admin.zalo_id },
-        });
-        if (res.success && Array.isArray(res.data)) {
-          setAllUsers(res.data);
-        } else {
-          throw new Error(res.error || 'Failed to fetch users');
-        }
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, [admin, setAllUsers]);
-
-  const { assignedUsers, unassignedUsers } = useRecoilValue(splitUsersState);
+  const [activeTab, setActiveTab] = useState('');
 
   if (!admin || admin.role !== 'admin') {
     return (
@@ -67,193 +21,123 @@ const AdminPage = () => {
     );
   }
 
-  return (
-    <Page className="flex flex-col min-h-screen bg-gray-50">
-      <Box className="bg-white shadow-sm pb-4">
-        <AdminHeader />
-        <Box className="px-4 mt-4">
-          <SectionTitle title="Thống kê nhanh" />
-        </Box>
-        <AdminStats />
-      </Box>
+  const menuItems = [
+    {
+      key: 'personnel',
+      label: 'Quản lý nhân sự',
+      icon: '👥',
+      description: 'Quản lý thông tin nhân viên và phân quyền',
+    },
+    {
+      key: 'salary',
+      label: 'Quản lý lương',
+      icon: '💰',
+      description: 'Theo dõi và tính toán lương nhân viên',
+    },
+    {
+      key: 'attendance',
+      label: 'Quản lý ngày công',
+      icon: '📊',
+      description: 'Quản lý chấm công và ngày công',
+    },
+    {
+      key: 'leave',
+      label: 'Quản lý đơn xin nghỉ',
+      icon: '📝',
+      description: 'Duyệt đơn xin nghỉ phép của nhân viên',
+    },
+  ];
 
-      {loading && (
-        <Box className="flex items-center justify-center py-8">
-          <Box className="text-center">
-            <Text className="text-gray-500 mb-2">Đang tải danh sách...</Text>
-            <Box className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></Box>
-          </Box>
-        </Box>
-      )}
-
-      {error && (
-        <Box className="mx-4 my-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <Text className="text-red-600 text-center">Lỗi: {error}</Text>
-        </Box>
-      )}
-
-      {!loading && !error && (
-        <Box className="flex-1">
-          <Box className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 py-3">
-            <Box className="flex max-w-md mx-auto bg-gray-100 rounded-2xl p-1.5 shadow-inner">
-              <Box
-                onClick={() => setActiveTab('assigned')}
-                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-xl cursor-pointer transition-all duration-300 ${
-                  activeTab === 'assigned'
-                    ? 'bg-white shadow-lg transform scale-[1.02]'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <Box className="flex items-center justify-center space-x-2">
-                  <Box
-                    className={`w-2 h-2 rounded-full ${
-                      activeTab === 'assigned' ? 'bg-blue-500' : 'bg-gray-400'
-                    }`}
-                  />
-                  <Text
-                    className={`font-bold text-sm ${
-                      activeTab === 'assigned' ? 'text-blue-600' : 'text-gray-600'
-                    }`}
-                  >
-                    Nhân viên
-                  </Text>
-                </Box>
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'personnel':
+        return <PersonnelManagement onBack={() => setActiveTab('')} />;
+      case 'attendance':
+        return <AttendanceManagement onBack={() => setActiveTab('')} />;
+      case 'salary':
+        return <SalaryManagement onBack={() => setActiveTab('')} />;
+      case 'leave':
+        return <LeaveManagement onBack={() => setActiveTab('')} />;
+      default:
+        return (
+          <Box className="p-4 pb-20">
+            <Box className="space-y-3">
+              {menuItems.map((item) => (
                 <Box
-                  className={`mt-1 px-2 py-1 rounded-full ${
-                    activeTab === 'assigned' ? 'bg-blue-50' : 'bg-gray-200'
-                  } transition-colors`}
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all duration-200 hover:shadow-md"
                 >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      activeTab === 'assigned' ? 'text-blue-600' : 'text-gray-500'
-                    }`}
-                  >
-                    {assignedUsers.length} người
-                  </Text>
+                  <Box className="flex items-center space-x-4 flex-1">
+                    <Box className="w-12 h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl flex items-center justify-center">
+                      <Text className="text-xl">{item.icon}</Text>
+                    </Box>
+                    <Box className="flex-1">
+                      <Text className="font-semibold text-gray-800 text-lg">{item.label}</Text>
+                      <Text className="text-gray-500 text-sm mt-1">{item.description}</Text>
+                    </Box>
+                  </Box>
+                  <Box className="flex items-center">
+                    <Text className="text-gray-400 text-3xl font-bold">›</Text>
+                  </Box>
                 </Box>
-              </Box>
+              ))}
+            </Box>
 
-              <Box
-                onClick={() => setActiveTab('unassigned')}
-                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 rounded-xl cursor-pointer transition-all duration-300 ${
-                  activeTab === 'unassigned'
-                    ? 'bg-white shadow-lg transform scale-[1.02]'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <Box className="flex items-center justify-center space-x-2">
-                  <Box
-                    className={`w-2 h-2 rounded-full ${
-                      activeTab === 'unassigned' ? 'bg-green-500' : 'bg-gray-400'
-                    }`}
-                  />
-                  <Text
-                    className={`font-bold text-sm ${
-                      activeTab === 'unassigned' ? 'text-green-600' : 'text-gray-600'
-                    }`}
-                  >
-                    Người dùng mới
-                  </Text>
-                </Box>
-                <Box
-                  className={`mt-1 px-2 py-1 rounded-full ${
-                    activeTab === 'unassigned' ? 'bg-green-50' : 'bg-gray-200'
-                  } transition-colors`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      activeTab === 'unassigned' ? 'text-green-600' : 'text-gray-500'
-                    }`}
-                  >
-                    {unassignedUsers.length} người
-                  </Text>
-                </Box>
+            <Box className="text-center mt-8 mb-12">
+              <Box className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <Text className="text-4xl">👋</Text>
               </Box>
+              <Text className="text-gray-600 text-lg font-bold mb-2">Chào mừng trở lại!</Text>
+              <Text className="text-gray-400 text-sm">{admin.name || 'Quản trị viên'}</Text>
             </Box>
           </Box>
+        );
+    }
+  };
 
-          <Box className="p-4">
-            {activeTab === 'assigned' && (
-              <Box className="space-y-3">
-                {assignedUsers.length === 0 ? (
-                  <Box className="text-center py-12">
-                    <Box className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                      <Text className="text-3xl">👥</Text>
-                    </Box>
-                    <Text className="text-gray-600 text-lg font-bold mb-2">
-                      Không có nhân viên nào
-                    </Text>
-                    <Text size="xSmall" className="text-gray-400">
-                      Tất cả người dùng đều chưa được phân công
-                    </Text>
-                  </Box>
-                ) : (
-                  <Box className="space-y-3">
-                    <Box className="flex items-center justify-between px-2">
-                      <Text className="text-gray-600 font-medium text-sm">Danh sách nhân viên</Text>
-                      <Box className="bg-blue-50 px-2 py-1 rounded-full">
-                        <Text className="text-blue-600 text-xs font-semibold">
-                          {assignedUsers.length} người
-                        </Text>
-                      </Box>
-                    </Box>
-                    <Box className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                      {assignedUsers
-                        .filter((user) => user.zalo_id)
-                        .map((user) => (
-                          <UserRow key={user.zalo_id} user={user} roles={roles} />
-                        ))}
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-            )}
-
-            {activeTab === 'unassigned' && (
-              <Box className="space-y-3">
-                {unassignedUsers.length === 0 ? (
-                  <Box className="text-center py-12">
-                    <Box className="w-20 h-20 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                      <Text className="text-3xl">✨</Text>
-                    </Box>
-                    <Text className="text-gray-600 text-lg font-bold mb-2">
-                      Không có người dùng mới
-                    </Text>
-                    <Text size="xSmall" className="text-gray-400">
-                      Tất cả người dùng đã được phân công
-                    </Text>
-                  </Box>
-                ) : (
-                  <Box className="space-y-3">
-                    <Box className="flex items-center justify-between px-2">
-                      <Text className="text-gray-600 font-medium text-sm">
-                        Danh sách người dùng mới
-                      </Text>
-                      <Box className="bg-green-50 px-2 py-1 rounded-full">
-                        <Text className="text-green-600 text-xs font-semibold">
-                          {unassignedUsers.length} người
-                        </Text>
-                      </Box>
-                    </Box>
-                    <Box className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                      {unassignedUsers
-                        .filter((user) => user.zalo_id)
-                        .map((user) => (
-                          <UserRow key={user.zalo_id} user={user} roles={roles} />
-                        ))}
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-            )}
+  return (
+    <Page className="flex flex-col min-h-screen bg-gray-50 ">
+      {activeTab ? (
+        <Box className="bg-white shadow-sm py-4 px-4 pt-12">
+          <Box className="flex items-center space-x-3">
+            <Box
+              onClick={() => setActiveTab('')}
+              className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer active:scale-95 transition-all"
+            >
+              <Text className="text-2xl text-gray-600">‹</Text>
+            </Box>
+            <Box>
+              <Text className="text-xl font-bold text-gray-800">
+                {menuItems.find((item) => item.key === activeTab)?.label || 'Quản lý'}
+              </Text>
+              <Text className="text-gray-500 text-sm mt-1">
+                {menuItems.find((item) => item.key === activeTab)?.description || ''}
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+      ) : (
+        <Box className="bg-white shadow-sm py-6 px-4">
+          <Box className="flex items-center justify-start pt-8">
+            <Box className="flex items-center space-x-2">
+              <img
+                src={admin.avatar_url || 'https://placehold.co/40x40/EFEFEF/AAAAAA?text=AD'}
+                className="w-12 h-12 rounded-full border-2 border-blue-100"
+                alt="Admin"
+              />
+            </Box>
+            <Box className="pl-4">
+              <Text className="text-2xl font-bold text-gray-800">Hệ thống Admin</Text>
+              <Text className="text-gray-500 text-sm mt-1">Quản lý toàn bộ hệ thống nhân sự</Text>
+            </Box>
           </Box>
         </Box>
       )}
 
-      {/* Bottom Padding */}
-      <Box className="h-20"></Box>
+      <Box className="flex-1">{renderContent()}</Box>
     </Page>
   );
 };
 
-export default AdminPage;
+export default AdminDashboard;

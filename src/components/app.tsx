@@ -29,7 +29,6 @@ const MyApp = () => {
       <App>
         <AppInitializer>
           <ZMPRouter>
-            {' '}
             <Layout />
           </ZMPRouter>
         </AppInitializer>
