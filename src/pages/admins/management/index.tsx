@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Text, Button } from 'zmp-ui';
+import { Box, Text, Icon, Page } from 'zmp-ui';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { userState, allUsersState, splitUsersState } from '@/states/state';
 import api from '@/lib/api';
@@ -61,13 +61,19 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
 
   const { assignedUsers, unassignedUsers } = useRecoilValue(splitUsersState);
 
-  // Remove the admin check since it's already done in AdminDashboard
-  if (!admin) {
-    return null;
-  }
+  if (!admin) return null;
 
   return (
-    <Box className="flex-1 bg-gray-50">
+    <Page className="flex-1 bg-gray-50 flex flex-col min-h-screen">
+      <Box className="bg-blue-600 px-4 py-4 pt-12 shadow-sm sticky top-0 z-50">
+        <Box className="flex items-center space-x-3">
+          <Box onClick={onBack} className="active:opacity-50 transition-opacity cursor-pointer">
+            <Icon icon="zi-arrow-left" className="text-white text-2xl" />
+          </Box>
+          <Text className="text-white font-bold text-xl">Quản lý nhân sự</Text>
+        </Box>
+      </Box>
+
       <Box className="bg-white shadow-sm pb-4">
         <AdminHeader />
         <Box className="px-4 mt-4">
@@ -93,7 +99,7 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
 
       {!loading && !error && (
         <Box className="flex-1">
-          <Box className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 py-3">
+          <Box className="bg-white border-b border-gray-200 sticky top-[130px] z-40 px-4 py-3">
             <Box className="flex max-w-md mx-auto bg-gray-100 rounded-2xl p-1.5 shadow-inner">
               <Box
                 onClick={() => setActiveTab('assigned')}
@@ -182,20 +188,9 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
                     <Text className="text-gray-600 text-lg font-bold mb-2">
                       Không có nhân viên nào
                     </Text>
-                    <Text size="xSmall" className="text-gray-400">
-                      Tất cả người dùng đều chưa được phân công
-                    </Text>
                   </Box>
                 ) : (
                   <Box className="space-y-3">
-                    <Box className="flex items-center justify-between px-2">
-                      <Text className="text-gray-600 font-medium text-sm">Danh sách nhân viên</Text>
-                      <Box className="bg-blue-50 px-2 py-1 rounded-full">
-                        <Text className="text-blue-600 text-xs font-semibold">
-                          {assignedUsers.length} người
-                        </Text>
-                      </Box>
-                    </Box>
                     <Box className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       {assignedUsers
                         .filter((user) => user.zalo_id)
@@ -218,22 +213,9 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
                     <Text className="text-gray-600 text-lg font-bold mb-2">
                       Không có người dùng mới
                     </Text>
-                    <Text size="xSmall" className="text-gray-400">
-                      Tất cả người dùng đã được phân công
-                    </Text>
                   </Box>
                 ) : (
                   <Box className="space-y-3">
-                    <Box className="flex items-center justify-between px-2">
-                      <Text className="text-gray-600 font-medium text-sm">
-                        Danh sách người dùng mới
-                      </Text>
-                      <Box className="bg-green-50 px-2 py-1 rounded-full">
-                        <Text className="text-green-600 text-xs font-semibold">
-                          {unassignedUsers.length} người
-                        </Text>
-                      </Box>
-                    </Box>
                     <Box className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       {unassignedUsers
                         .filter((user) => user.zalo_id)
@@ -248,7 +230,7 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
           </Box>
         </Box>
       )}
-    </Box>
+    </Page>
   );
 };
 

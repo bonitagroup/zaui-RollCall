@@ -63,7 +63,6 @@ export const UserRow: React.FC<UserRowProps> = ({ user, roles }) => {
 
   return (
     <Box className="p-3 py-4 border-b border-gray-200 bg-white">
-      {/* Header với thông tin user */}
       <Box flex className="items-center justify-between mb-3">
         <Box flex className="items-center flex-1">
           <img

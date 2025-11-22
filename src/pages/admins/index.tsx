@@ -3,7 +3,7 @@ import { Page, Box, Text } from 'zmp-ui';
 import { useRecoilValue } from 'recoil';
 import { userState } from '@/states/state';
 import PersonnelManagement from './management';
-import AttendanceManagement from './AttendanceManagement';
+import AttendanceManagement from './attendance/index';
 import SalaryManagement from './salary/SalaryManagement';
 import LeaveManagement from './LeaveManagement';
 
@@ -27,6 +27,12 @@ const AdminDashboard = () => {
       label: 'Quản lý nhân sự',
       icon: '👥',
       description: 'Quản lý thông tin nhân viên và phân quyền',
+    },
+    {
+      key: 'job',
+      label: 'Quản lý công việc',
+      icon: '💼',
+      description: 'Quản lý công việc công ty theo ngày',
     },
     {
       key: 'salary',
@@ -98,26 +104,7 @@ const AdminDashboard = () => {
 
   return (
     <Page className="flex flex-col min-h-screen bg-gray-50 ">
-      {activeTab ? (
-        <Box className="bg-white shadow-sm py-4 px-4 pt-12">
-          <Box className="flex items-center space-x-3">
-            <Box
-              onClick={() => setActiveTab('')}
-              className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg cursor-pointer active:scale-95 transition-all"
-            >
-              <Text className="text-2xl text-gray-600">‹</Text>
-            </Box>
-            <Box>
-              <Text className="text-xl font-bold text-gray-800">
-                {menuItems.find((item) => item.key === activeTab)?.label || 'Quản lý'}
-              </Text>
-              <Text className="text-gray-500 text-sm mt-1">
-                {menuItems.find((item) => item.key === activeTab)?.description || ''}
-              </Text>
-            </Box>
-          </Box>
-        </Box>
-      ) : (
+      {!activeTab && (
         <Box className="bg-white shadow-sm py-6 px-4">
           <Box className="flex items-center justify-start pt-8">
             <Box className="flex items-center space-x-2">
