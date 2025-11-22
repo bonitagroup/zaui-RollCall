@@ -1,59 +1,70 @@
-import { Box, Text } from 'zmp-ui';
+import { Box, Text, Icon } from 'zmp-ui';
 import { useRecoilValue } from 'recoil';
 import { historyRecordsSelector } from '@/states/state';
-import { getAttendanceStatus, formatDateDisplay, formatTimeDisplay } from '@/lib/utils';
+import { formatDateDisplay, formatTimeDisplay, calculateShiftStatus } from '@/lib/utils';
 
-export const History = (): JSX.Element => {
-  const historyRecords = useRecoilValue(historyRecordsSelector);
+const History = (): JSX.Element => {
+  const records = useRecoilValue(historyRecordsSelector);
+
+  if (records.length === 0) {
+    return (
+      <Box className="text-center py-8 text-gray-400 text-sm italic">Chưa có dữ liệu chấm công</Box>
+    );
+  }
 
   return (
-    <Box className="gap-4 px-2 flex flex-col">
-      {historyRecords.length === 0 ? (
-        <Box className="text-center text-gray-500 py-4">
-          <Text>Chưa có dữ liệu</Text>
-        </Box>
-      ) : (
-        historyRecords.map((rec) => {
-          const morningStatus = getAttendanceStatus({
-            ...rec,
-            checkIn: rec.shifts?.morning?.checkIn ?? undefined,
-            checkOut: rec.shifts?.morning?.checkOut ?? undefined,
-            checkInShiftIndex: 0,
-            checkOutShiftIndex: 0,
-          });
-          const afternoonStatus = getAttendanceStatus({
-            ...rec,
-            checkIn: rec.shifts?.afternoon?.checkIn ?? undefined,
-            checkOut: rec.shifts?.afternoon?.checkOut ?? undefined,
-            checkInShiftIndex: 1,
-            checkOutShiftIndex: 1,
-          });
-          return (
-            <Box
-              key={rec.date}
-              className="flex flex-col w-full shadow-lg text-left bg-white rounded-xl p-4"
-            >
-              <Text className="font-bold text-lg mb-3 pb-3 border-b border-gray-300">
-                {formatDateDisplay(rec.date)}
-              </Text>
-              <Box className="flex flex-row justify-between mb-3 pb-3 border-b border-gray-200">
-                <Text className="text-sm font-semibold text-gray-500 mb-1">
-                  Ca sáng: {formatTimeDisplay(rec.shifts?.morning?.checkIn || undefined)} -{' '}
-                  {formatTimeDisplay(rec.shifts?.morning?.checkOut || undefined)}
+    <Box className="flex flex-col gap-4 px-2 pb-20">
+      {records.map((rec, idx) => {
+        const morning = calculateShiftStatus(
+          rec.shifts.morning.checkIn,
+          rec.shifts.morning.checkOut,
+          0
+        );
+        const afternoon = calculateShiftStatus(
+          rec.shifts.afternoon.checkIn,
+          rec.shifts.afternoon.checkOut,
+          1
+        );
+
+        return (
+          <Box
+            key={`${rec.date}-${idx}`}
+            className="flex flex-col w-full shadow-md bg-white rounded-xl p-4 border border-gray-100"
+          >
+            <Text className="font-bold text-lg mb-3 pb-2 border-b border-gray-200 text-gray-800">
+              {formatDateDisplay(rec.date)}
+            </Text>
+
+            <Box className="flex flex-row justify-between mb-3 pb-3 border-b border-gray-50 items-center">
+              <Box>
+                <Box className="flex items-center mb-1">
+                  <Icon icon="zi-radio-checked" className="text-yellow-500 mr-1 text-lg" />
+                  <Text className="text-sm font-semibold text-gray-600">Ca sáng</Text>
+                </Box>
+                <Text className="text-xs text-gray-400 font-mono ml-6">
+                  {formatTimeDisplay(rec.shifts.morning.checkIn || undefined)} -{' '}
+                  {formatTimeDisplay(rec.shifts.morning.checkOut || undefined)}
                 </Text>
-                <Text className="text-xs text-blue-600 font-bold">{morningStatus}</Text>
               </Box>
-              <Box className="flex flex-row justify-between">
-                <Text className="text-sm font-semibold text-gray-500 mb-1">
-                  Ca chiều: {formatTimeDisplay(rec.shifts?.afternoon?.checkIn || undefined)} -{' '}
-                  {formatTimeDisplay(rec.shifts?.afternoon?.checkOut || undefined)}
-                </Text>
-                <Text className="text-xs text-blue-600 font-bold">{afternoonStatus}</Text>
-              </Box>
+              <Text className={`text-xs font-bold ${morning.color}`}>{morning.text}</Text>
             </Box>
-          );
-        })
-      )}
+
+            <Box className="flex flex-row justify-between items-center">
+              <Box>
+                <Box className="flex items-center mb-1">
+                  <Icon icon="zi-radio-checked" className="text-blue-500 mr-1 text-lg" />
+                  <Text className="text-sm font-semibold text-gray-600">Ca chiều</Text>
+                </Box>
+                <Text className="text-xs text-gray-400 font-mono ml-6">
+                  {formatTimeDisplay(rec.shifts.afternoon.checkIn || undefined)} -{' '}
+                  {formatTimeDisplay(rec.shifts.afternoon.checkOut || undefined)}
+                </Text>
+              </Box>
+              <Text className={`text-xs font-bold ${afternoon.color}`}>{afternoon.text}</Text>
+            </Box>
+          </Box>
+        );
+      })}
     </Box>
   );
 };

@@ -25,7 +25,6 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
 
   const employees = useRecoilValue(validEmployeesSelector);
 
-  // Logic tự động tải danh sách user
   useEffect(() => {
     const fetchUsersIfNeeded = async () => {
       if (allUsers.length === 0 && admin?.zalo_id) {
@@ -47,7 +46,6 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
     fetchUsersIfNeeded();
   }, [allUsers.length, admin?.zalo_id, setAllUsers, setLoadingUsers]);
 
-  // Nếu chưa chọn nhân viên, hiển thị màn hình chọn
   if (!selectedUser) {
     return <EmployeeSelector onBack={onBack} />;
   }
@@ -65,7 +63,6 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
         <Box className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full transform translate-x-10 -translate-y-10" />
         <Box className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full transform -translate-x-5 translate-y-5" />
 
-        {/* User Info */}
         <Box className="flex items-center space-x-4 relative z-10">
           <Avatar
             src={selectedUser.avatar_url || ''}
@@ -88,13 +85,11 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
         </Box>
       </Box>
 
-      {/* Body Content */}
       <Box className="flex-1 overflow-auto">
         <CalendarView user={selectedUser} />
         <HistoryList user={selectedUser} />
       </Box>
 
-      {/* Sheet chọn nhân viên */}
       <Sheet
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}

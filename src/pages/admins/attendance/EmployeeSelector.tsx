@@ -44,7 +44,7 @@ const EmployeeSelector: React.FC<EmployeeSelectorProps> = ({ onBack }) => {
               employees.map((u) => (
                 <Box
                   key={u.zalo_id || Math.random()}
-                  onClick={() => setSelectedUser(u)} // Set Recoil State
+                  onClick={() => setSelectedUser(u)}
                   className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between active:bg-gray-50 transition-all cursor-pointer"
                 >
                   <Box className="flex items-center space-x-3">
