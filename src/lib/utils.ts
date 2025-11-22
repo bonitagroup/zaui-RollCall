@@ -208,3 +208,17 @@ export function getShiftName(rec?: AttendanceRecord): string {
   if (!rec || rec.checkInShiftIndex === undefined) return '-';
   return config.shifts[rec.checkInShiftIndex].name;
 }
+
+export const formatDuration = (ms: number) => {
+  const safeMs = Math.max(0, ms);
+  const s = Math.floor((safeMs / 1000) % 60)
+    .toString()
+    .padStart(2, '0');
+  const m = Math.floor((safeMs / 60000) % 60)
+    .toString()
+    .padStart(2, '0');
+  const h = Math.floor(safeMs / 3600000)
+    .toString()
+    .padStart(2, '0');
+  return `${h}:${m}:${s}`;
+};
