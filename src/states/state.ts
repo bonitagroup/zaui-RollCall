@@ -1,7 +1,13 @@
 import { atom } from 'recoil';
 import { User } from '@/types/users';
 import { selector } from 'recoil';
-import { getTodayDateString, config, isNowInRange, timeStringToDateToday } from '@/lib/utils';
+import {
+  getTodayDateString,
+  config,
+  isNowInRange,
+  timeStringToDateToday,
+  normalizeDate,
+} from '@/lib/utils';
 import { AttendanceRecord, ShiftConfig } from '@/types/rollcalls';
 
 export const userState = atom<User | null>({
@@ -223,15 +229,8 @@ export const calendarSummarySelector = selector({
       return mode === '>' ? timeVal > targetVal : timeVal < targetVal;
     };
 
-    const getSafeDateStr = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
     for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
-      const dateStr = getSafeDateStr(d);
+      const dateStr = normalizeDate(d);
       const isSunday = d.getDay() === 0;
       if (isSunday) continue;
       if (d.getTime() >= today.getTime()) {

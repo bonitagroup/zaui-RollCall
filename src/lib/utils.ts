@@ -135,8 +135,23 @@ export const recomputeState = (r: AttendanceRecord): AttendanceRecord => {
   return rec;
 };
 
+export function normalizeDate(dateInput: string | Date): string {
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '1970-01-01';
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    console.error('Failed to normalize date:', dateInput);
+    return '1970-01-01';
+  }
+}
+
 export function mapDbRecordToFrontend(dbRecord: any): AttendanceRecord {
-  const formattedDate = toVNDateString(dbRecord.date);
+  const formattedDate = normalizeDate(dbRecord.date);
 
   return {
     date: formattedDate,
