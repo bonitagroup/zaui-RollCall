@@ -65,7 +65,7 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
 
   return (
     <Page className="flex-1 bg-gray-50 flex flex-col min-h-screen">
-      <Box className="bg-blue-600 px-4 py-4 pt-12 shadow-sm sticky top-0 z-50">
+      <Box className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-4 pt-12 shadow-sm sticky top-0 z-50">
         <Box className="flex items-center space-x-3">
           <Box onClick={onBack} className="active:opacity-50 transition-opacity cursor-pointer">
             <Icon icon="zi-arrow-left" className="text-white text-2xl" />
@@ -190,7 +190,7 @@ const PersonnelManagement: React.FC<PersonnelManagementProps> = ({ onBack }) => 
                     </Text>
                   </Box>
                 ) : (
-                  <Box className="space-y-3">
+                  <Box className="space-y-3 pb-28">
                     <Box className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       {assignedUsers
                         .filter((user) => user.zalo_id)

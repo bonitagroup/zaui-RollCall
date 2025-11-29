@@ -10,6 +10,11 @@ import {
 } from '@/lib/utils';
 import { AttendanceRecord, ShiftConfig } from '@/types/rollcalls';
 
+export const adminTabState = atom({
+  key: 'adminTabState',
+  default: '',
+});
+
 export const userState = atom<User | null>({
   key: 'userState',
   default: null,

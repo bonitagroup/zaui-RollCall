@@ -52,8 +52,8 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
 
   return (
     <Page className="bg-gray-50 min-h-screen flex flex-col">
-      <Box className="bg-gradient-to-r from-blue-600 to-purple-700 px-4 pb-4 pt-12 shadow-lg relative overflow-hidden">
-        <Box className="flex items-center pb-6 border-b border-white/20 mb-4">
+      <Box className="bg-gradient-to-tr from-blue-600 via-blue-700 to-cyan-600  px-4 pb-4 pt-12 shadow-lg relative overflow-hidden">
+        <Box className="flex items-center pb-6 border-b border-white/20 mb-4 fixed z-50 top-0 left-0 right-0 bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600  px-4 pt-12">
           <Box onClick={() => setSelectedUser(null)}>
             <Icon icon="zi-arrow-left" className="text-white text-2xl mr-2" />
           </Box>
@@ -63,7 +63,7 @@ const AttendanceManagement = ({ onBack }: { onBack: () => void }) => {
         <Box className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full transform translate-x-10 -translate-y-10" />
         <Box className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full transform -translate-x-5 translate-y-5" />
 
-        <Box className="flex items-center space-x-4 relative z-10">
+        <Box className="flex items-center space-x-4 relative z-10 pt-20">
           <Avatar
             src={selectedUser.avatar_url || ''}
             size={52}

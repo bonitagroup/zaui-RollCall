@@ -1,10 +1,39 @@
+import React, { useState, useEffect } from 'react';
 import { Box, Text, Icon } from 'zmp-ui';
 import { useRecoilValue } from 'recoil';
-import { historyRecordsSelector } from '@/states/state';
-import { formatDateDisplay, formatTimeDisplay, calculateShiftStatus } from '@/lib/utils';
+import { userState, historyRecordsSelector } from '@/states/state';
+import {
+  formatDateDisplay,
+  formatTimeDisplay,
+  calculateShiftStatus,
+  checkSessionLeave,
+} from '@/lib/utils';
+import api from '@/lib/api';
 
 const History = (): JSX.Element => {
+  const user = useRecoilValue(userState);
   const records = useRecoilValue(historyRecordsSelector);
+  const [leaves, setLeaves] = useState<any[]>([]);
+
+  // 1. Fetch danh sách nghỉ phép
+  useEffect(() => {
+    const fetchLeaves = async () => {
+      // SỬA LỖI: Kiểm tra user tồn tại trước
+      if (!user || !user.zalo_id) return;
+
+      try {
+        const res: any = await api.get('/leave-requests/mine', {
+          params: { zalo_id: user.zalo_id },
+        });
+        if (res.success) {
+          setLeaves(res.data.filter((l: any) => l.status === 'approved'));
+        }
+      } catch (error) {
+        console.error('Error fetching leaves:', error);
+      }
+    };
+    fetchLeaves();
+  }, [user?.zalo_id]); // SỬA LỖI: Thêm dấu ? vào user?.zalo_id
 
   if (records.length === 0) {
     return (
@@ -12,20 +41,40 @@ const History = (): JSX.Element => {
     );
   }
 
+  // 2. Hàm render trạng thái thông minh
+  const renderShiftStatus = (
+    checkIn: string | null,
+    checkOut: string | null,
+    shiftIndex: 0 | 1,
+    dateStr: string
+  ) => {
+    // Ưu tiên 1: Đủ công
+    if (checkIn && checkOut) {
+      const status = calculateShiftStatus(checkIn, checkOut, shiftIndex);
+      return <Text className={`text-xs font-bold ${status.color}`}>{status.text}</Text>;
+    }
+
+    // Ưu tiên 2: Nghỉ phép (Đè lên Vắng và Tương lai)
+    const sessionName = shiftIndex === 0 ? 'morning' : 'afternoon';
+    const isLeave = checkSessionLeave(dateStr, sessionName, leaves);
+
+    if (isLeave) {
+      return <Text className="text-xs font-bold text-purple-600">Nghỉ phép</Text>;
+    }
+
+    // Ưu tiên 3: Tương lai
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr > todayStr) {
+      return <Text className="text-xs font-bold text-gray-400">--</Text>;
+    }
+
+    // Ưu tiên 4: Vắng
+    return <Text className="text-xs font-bold text-red-500">Vắng</Text>;
+  };
+
   return (
     <Box className="flex flex-col gap-4 px-2 pb-20">
       {records.map((rec, idx) => {
-        const morning = calculateShiftStatus(
-          rec.shifts.morning.checkIn,
-          rec.shifts.morning.checkOut,
-          0
-        );
-        const afternoon = calculateShiftStatus(
-          rec.shifts.afternoon.checkIn,
-          rec.shifts.afternoon.checkOut,
-          1
-        );
-
         return (
           <Box
             key={`${rec.date}-${idx}`}
@@ -35,6 +84,7 @@ const History = (): JSX.Element => {
               {formatDateDisplay(rec.date)}
             </Text>
 
+            {/* CA SÁNG */}
             <Box className="flex flex-row justify-between mb-3 pb-3 border-b border-gray-50 items-center">
               <Box>
                 <Box className="flex items-center mb-1">
@@ -46,9 +96,15 @@ const History = (): JSX.Element => {
                   {formatTimeDisplay(rec.shifts.morning.checkOut || undefined)}
                 </Text>
               </Box>
-              <Text className={`text-xs font-bold ${morning.color}`}>{morning.text}</Text>
+              {renderShiftStatus(
+                rec.shifts.morning.checkIn,
+                rec.shifts.morning.checkOut,
+                0,
+                rec.date
+              )}
             </Box>
 
+            {/* CA CHIỀU */}
             <Box className="flex flex-row justify-between items-center">
               <Box>
                 <Box className="flex items-center mb-1">
@@ -60,7 +116,12 @@ const History = (): JSX.Element => {
                   {formatTimeDisplay(rec.shifts.afternoon.checkOut || undefined)}
                 </Text>
               </Box>
-              <Text className={`text-xs font-bold ${afternoon.color}`}>{afternoon.text}</Text>
+              {renderShiftStatus(
+                rec.shifts.afternoon.checkIn,
+                rec.shifts.afternoon.checkOut,
+                1,
+                rec.date
+              )}
             </Box>
           </Box>
         );

@@ -1,15 +1,35 @@
-import { useState } from 'react';
+import React, { useEffect } from 'react'; // Thêm useEffect
 import { Page, Box, Text } from 'zmp-ui';
 import { useRecoilValue } from 'recoil';
 import { userState } from '@/states/state';
+import { useSearchParams, useNavigate } from 'react-router-dom'; // Import 2 hook này
+
 import PersonnelManagement from './management';
 import AttendanceManagement from './attendance/index';
 import SalaryManagement from './salary/SalaryManagement';
-import LeaveManagement from './LeaveManagement';
+import LeaveManagement from './leaves/index';
+import TaskManagement from './task/TaskManagement';
 
 const AdminDashboard = () => {
   const admin = useRecoilValue(userState);
-  const [activeTab, setActiveTab] = useState('');
+
+  // Thay thế recoil activeTab bằng searchParams
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Lấy activeTab hiện tại từ URL (ví dụ: ?tab=salary)
+  const activeTab = searchParams.get('tab') || '';
+
+  // Hàm chuyển tab: Đẩy vào lịch sử duyệt web
+  const handleSwitchTab = (key) => {
+    setSearchParams({ tab: key });
+  };
+
+  // Hàm quay lại menu: Thay vì set state, ta dùng navigate(-1) để lùi lịch sử
+  // Điều này giúp đồng bộ với nút Back vật lý
+  const handleBackToMenu = () => {
+    navigate(-1);
+  };
 
   if (!admin || admin.role !== 'admin') {
     return (
@@ -32,19 +52,19 @@ const AdminDashboard = () => {
       key: 'job',
       label: 'Quản lý công việc',
       icon: '💼',
-      description: 'Quản lý công việc công ty theo ngày',
-    },
-    {
-      key: 'salary',
-      label: 'Quản lý lương',
-      icon: '💰',
-      description: 'Theo dõi và tính toán lương nhân viên',
+      description: 'Giao việc và theo dõi tiến độ',
     },
     {
       key: 'attendance',
       label: 'Quản lý ngày công',
       icon: '📊',
       description: 'Quản lý chấm công và ngày công',
+    },
+    {
+      key: 'salary',
+      label: 'Quản lý lương',
+      icon: '💰',
+      description: 'Theo dõi và tính toán lương nhân viên',
     },
     {
       key: 'leave',
@@ -57,21 +77,25 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'personnel':
-        return <PersonnelManagement onBack={() => setActiveTab('')} />;
+        return <PersonnelManagement onBack={handleBackToMenu} />;
+      case 'job':
+        return <TaskManagement onBack={handleBackToMenu} />;
       case 'attendance':
-        return <AttendanceManagement onBack={() => setActiveTab('')} />;
+        return <AttendanceManagement onBack={handleBackToMenu} />;
       case 'salary':
-        return <SalaryManagement onBack={() => setActiveTab('')} />;
+        return <SalaryManagement onBack={handleBackToMenu} />;
       case 'leave':
-        return <LeaveManagement onBack={() => setActiveTab('')} />;
+        return <LeaveManagement onBack={handleBackToMenu} />;
       default:
+        // Mặc định hiển thị Menu
         return (
           <Box className="p-4 pb-20">
             <Box className="space-y-3">
               {menuItems.map((item) => (
                 <Box
                   key={item.key}
-                  onClick={() => setActiveTab(item.key)}
+                  // SỬ DỤNG HÀM CHUYỂN TAB MỚI
+                  onClick={() => handleSwitchTab(item.key)}
                   className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all duration-200 hover:shadow-md"
                 >
                   <Box className="flex items-center space-x-4 flex-1">
@@ -104,8 +128,9 @@ const AdminDashboard = () => {
 
   return (
     <Page className="flex flex-col min-h-screen bg-gray-50 ">
+      {/* Chỉ hiện Header khi ở trang Menu (activeTab rỗng) */}
       {!activeTab && (
-        <Box className="bg-white shadow-sm py-6 px-4">
+        <Box className="bg-gray-100 shadow-sm py-6 px-4">
           <Box className="flex items-center justify-start pt-8">
             <Box className="flex items-center space-x-2">
               <img

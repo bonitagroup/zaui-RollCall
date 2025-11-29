@@ -9,15 +9,15 @@ const baseTabs = {
     label: 'Trang chủ',
     icon: '🏠',
   },
-  '/attendance': {
+  '/my-attendance': {
     label: 'Chấm công',
     icon: '📅',
   },
-  '/work': {
+  '/my-tasks': {
     label: 'Công việc',
     icon: '💼',
   },
-  '/profile': {
+  '/user-profile': {
     label: 'Cá nhân',
     icon: '👤',
   },
@@ -31,9 +31,10 @@ const adminTab = {
 };
 
 const getActiveKey = (pathname: string) => {
-  if (pathname.startsWith('/attendance')) return '/attendance';
+  if (pathname.startsWith('/my-attendance')) return '/my-attendance';
   if (pathname.startsWith('/work')) return '/work';
-  if (pathname.startsWith('/profile')) return '/profile';
+  if (pathname.startsWith('/my-tasks')) return '/my-tasks';
+  if (pathname.startsWith('/user-profile')) return '/user-profile';
   if (pathname.startsWith('/AdminDashboard')) return '/AdminDashboard';
   return '/';
 };
@@ -47,7 +48,7 @@ export const Navigation: React.VFC = () => {
 
   const tabs = useMemo(() => {
     if (user?.role === 'admin') {
-      const { '/attendance': removed, ...employeeTabs } = baseTabs;
+      const { '/my-attendance': removed, ...employeeTabs } = baseTabs;
       return { ...employeeTabs, ...adminTab };
     }
 

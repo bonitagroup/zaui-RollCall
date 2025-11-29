@@ -14,8 +14,11 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',
+    'bypass-tunnel-reminder': 'true',
+    'X-Requested-With': 'XMLHttpRequest',
   },
 });
+
 api.interceptors.response.use(
   (response) => {
     return response.data;
@@ -23,8 +26,20 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     console.error('API Error:', error.response || error.message);
 
-    const errorData = error.response?.data as { error?: string };
-    const errorMessage = errorData?.error || error.message || 'Đã xảy ra lỗi không xác định';
+    // Xử lý nếu gặp lỗi HTML (Do Tunnel chặn hoặc Server lỗi)
+    if (
+      error.response &&
+      typeof error.response.data === 'string' &&
+      (error.response.data as string).includes('<!DOCTYPE html>')
+    ) {
+      return Promise.reject(
+        new Error('Lỗi kết nối Tunnel: Vui lòng mở link server trên máy tính để xác nhận.')
+      );
+    }
+
+    const errorData = error.response?.data as { error?: string; message?: string };
+    const errorMessage =
+      errorData?.error || errorData?.message || error.message || 'Đã xảy ra lỗi không xác định';
 
     return Promise.reject(new Error(errorMessage));
   }

@@ -1,13 +1,16 @@
 import { Box, Text } from 'zmp-ui';
+import { useNavigate } from 'react-router-dom';
 
 export const Feature = (): JSX.Element => {
+  const navigate = useNavigate();
+
   const hanDleUpdate = () => {
     alert('Chức năng đang được phát triển!');
   };
   return (
     <Box className="grid grid-cols-2 gap-4 px-2">
       <Box
-        onClick={() => hanDleUpdate()}
+        onClick={() => navigate('/my-attendance')}
         className="flex flex-col shadow-lg text-center bg-white rounded-xl p-4"
       >
         <Text className="font-bold text-3xl">📊 </Text>
@@ -15,7 +18,7 @@ export const Feature = (): JSX.Element => {
       </Box>
 
       <Box
-        onClick={() => hanDleUpdate()}
+        onClick={() => navigate('/user-salary-detail')}
         className="flex flex-col shadow-lg text-center bg-white rounded-xl p-4"
       >
         <Text className="font-bold text-3xl">💰</Text>
@@ -23,7 +26,7 @@ export const Feature = (): JSX.Element => {
       </Box>
 
       <button
-        onClick={() => hanDleUpdate()}
+        onClick={() => navigate('/leave-request')}
         className="flex flex-col shadow-lg text-center bg-white rounded-xl p-4"
       >
         <Text className="font-bold text-3xl">🏖️</Text>

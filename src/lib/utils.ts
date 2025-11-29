@@ -1,4 +1,4 @@
-import { AttendanceRecord, ShiftConfig } from '@/types/rollcalls';
+import { AttendanceRecord } from '@/types/rollcalls';
 
 export const config = {
   shifts: [
@@ -6,7 +6,7 @@ export const config = {
       name: 'Ca sáng',
       checkInStart: '07:45',
       checkInDeadline: '08:10',
-      checkInEnd: '12:00',
+      checkInEnd: '09:00',
       checkOutStart: '12:00',
       checkOutEnd: '12:30',
       minWorkMs: 4 * 60 * 60 * 1000,
@@ -14,8 +14,8 @@ export const config = {
     {
       name: 'Ca chiều',
       checkInStart: '13:15',
-      checkInDeadline: '13:35',
-      checkInEnd: '18:00',
+      checkInDeadline: '13:40',
+      checkInEnd: '14:30',
       checkOutStart: '17:30',
       checkOutEnd: '18:30',
       minWorkMs: 4 * 60 * 60 * 1000,
@@ -157,8 +157,8 @@ export const compareTime = (
 };
 
 export const calculateShiftStatus = (
-  checkIn: string | null,
-  checkOut: string | null,
+  checkIn: string | null | undefined,
+  checkOut: string | null | undefined,
   shiftIdx: number
 ) => {
   if (!checkIn || (checkIn && !checkOut)) {
@@ -182,9 +182,66 @@ export const calculateShiftStatus = (
   }
 
   if (errors.length > 0) {
-    if (errors.length > 1) return { text: errors.join(' & '), color: 'text-gray-600' };
+    if (errors.length > 1) return { text: errors.join(' & '), color: 'text-orange-600' };
     return { text: errors[0], color: 'text-orange-600' };
   }
 
   return { text: 'Đúng giờ', color: 'text-green-600' };
+};
+
+export const checkSessionLeave = (
+  dateStr: string,
+  session: 'morning' | 'afternoon',
+  leaves: any[]
+) => {
+  if (!leaves || leaves.length === 0) return false;
+
+  // Chuyển dateStr hiện tại về timestamp đầu ngày
+  const currentT = new Date(dateStr).setHours(0, 0, 0, 0);
+
+  return leaves.some((l) => {
+    // 1. Chỉ tính đơn đã duyệt
+    if (l.status !== 'approved') return false;
+
+    // Chuyển ngày bắt đầu/kết thúc đơn về timestamp đầu ngày
+    const startT = new Date(l.start_date).setHours(0, 0, 0, 0);
+    const endT = new Date(l.end_date).setHours(0, 0, 0, 0);
+
+    // Nếu ngày hiện tại nằm ngoài khoảng ngày nghỉ -> False
+    if (currentT < startT || currentT > endT) return false;
+
+    // Nếu nằm trọn vẹn ở giữa -> True
+    if (currentT > startT && currentT < endT) return true;
+
+    // Logic cho ngày BẮT ĐẦU
+    if (currentT === startT) {
+      // Nếu trùng ngày (nghỉ 1 ngày hoặc trong ngày)
+      if (startT === endT) {
+        if (l.start_session === 'morning' && l.end_session === 'morning' && session === 'morning')
+          return true;
+        if (
+          l.start_session === 'afternoon' &&
+          l.end_session === 'afternoon' &&
+          session === 'afternoon'
+        )
+          return true;
+        if (l.start_session === 'morning' && l.end_session === 'afternoon') return true; // Cả ngày
+        return false;
+      }
+      // Chuỗi ngày: Bắt đầu sáng -> Nghỉ cả ngày; Bắt đầu chiều -> Chiều nghỉ
+      if (l.start_session === 'morning') return true;
+      if (l.start_session === 'afternoon' && session === 'afternoon') return true;
+      return false;
+    }
+
+    // Logic cho ngày KẾT THÚC
+    if (currentT === endT) {
+      // Kết thúc chiều -> Nghỉ cả ngày; Kết thúc sáng -> Sáng nghỉ
+      if (l.end_session === 'afternoon') return true;
+      if (l.end_session === 'morning' && session === 'morning') return true;
+      return false;
+    }
+
+    return false;
+  });
 };

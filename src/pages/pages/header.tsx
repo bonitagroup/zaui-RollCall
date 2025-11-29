@@ -7,7 +7,7 @@ const Header = (): JSX.Element => {
   const user = useRecoilValue(userState);
 
   return (
-    <Box className="bg-[#0188FE] dark:bg-black w-full rounded-b-2xl shadow-2xl pt-14">
+    <Box className="bg-gradient-to-r from-blue-600 to-cyan-500 w-full rounded-b-2xl shadow-2xl pt-14">
       <Box className="p-3 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
           {user ? (

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, Button, Icon } from 'zmp-ui';
 import { User } from '@/types/users';
 import api from '@/lib/api';
-import { config, mapDbRecordToFrontend, recomputeState } from '@/lib/utils';
+import { config, mapDbRecordToFrontend, recomputeState, checkSessionLeave } from '@/lib/utils';
 import { AttendanceRecord } from '@/types/rollcalls';
 
 interface DayData {
@@ -36,8 +36,25 @@ const compareTime = (iso: string | null | undefined, targetTimeStr: string, mode
   return mode === '>' ? timeVal > targetVal : timeVal < targetVal;
 };
 
+// --- HÀM HỖ TRỢ KIỂM TRA NGÀY NGHỈ ---
+const isDateInLeave = (date: Date, leaves: any[]) => {
+  if (!leaves || leaves.length === 0) return false;
+  // Reset giờ về 0 để so sánh ngày chính xác
+  const current = new Date(date);
+  current.setHours(0, 0, 0, 0);
+
+  return leaves.some((l) => {
+    const start = new Date(l.start_date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(l.end_date);
+    end.setHours(0, 0, 0, 0);
+    return current >= start && current <= end;
+  });
+};
+
 const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  // Thêm state leaves vào đây
   const [stats, setStats] = useState<{ records: AttendanceRecord[]; leaves: any[] }>({
     records: [],
     leaves: [],
@@ -60,6 +77,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
 
           setStats({
             records: standardizedRecords,
+            // Lưu mảng leaves từ API trả về
             leaves: res.data.leaves || [],
           });
         }
@@ -92,15 +110,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
         continue;
       }
 
-      const rec = stats.records.find((r) => r.date === dateStr);
-      const leaveReq = stats.leaves.find(
-        (l: any) => new Date(l.start_date) <= d && new Date(l.end_date) >= d
-      );
-
-      if (leaveReq) {
+      // --- LOGIC 1: Đếm số ngày nghỉ ---
+      if (isDateInLeave(d, stats.leaves)) {
         leave++;
-        continue;
+        continue; // Nếu đã là ngày nghỉ thì bỏ qua, không tính là vắng
       }
+
+      const rec = stats.records.find((r) => r.date === dateStr);
 
       if (!rec) {
         absent += 2;
@@ -109,7 +125,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
 
       const processShift = (shift: any, shiftIdx: number) => {
         if (!shift.checkIn || (shift.checkIn && !shift.checkOut)) {
-          absent += 1;
+          absent += 0.5;
           return;
         }
 
@@ -155,46 +171,44 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
     const isFuture = date > new Date();
     const isSunday = date.getDay() === 0;
 
-    if (dateStr === today) return { morning: 'today', afternoon: 'today' };
-    if (isFuture) return { morning: 'future', afternoon: 'future' };
     if (isSunday) return { morning: 'sunday', afternoon: 'sunday' };
 
-    const isLeave = stats.leaves?.find(
-      (l: any) => new Date(l.start_date) <= date && new Date(l.end_date) >= date
-    );
-    if (isLeave) return { morning: 'leave', afternoon: 'leave' };
-
     const rec = stats.records?.find((r) => r.date === dateStr);
-    if (!rec) return { morning: 'absent', afternoon: 'absent' };
 
-    const getStatus = (shift: any, idx: number) => {
-      if (!shift.checkIn || (shift.checkIn && !shift.checkOut)) return 'absent';
-
-      if (shift.checkIn && shift.checkOut) {
-        const isLate = compareTime(shift.checkIn, getShiftTime(idx, 'deadline'), '>');
-        const isEarly = compareTime(shift.checkOut, getShiftTime(idx, 'outStart'), '<');
-
+    const resolveStatus = (shiftData: any, session: 'morning' | 'afternoon', shiftIdx: number) => {
+      // 1. Ưu tiên cao nhất: Đã hoàn thành (Có đủ Vào & Ra) -> Tính công
+      if (shiftData?.checkIn && shiftData?.checkOut) {
+        const isLate = compareTime(shiftData.checkIn, getShiftTime(shiftIdx, 'deadline'), '>');
+        const isEarly = compareTime(shiftData.checkOut, getShiftTime(shiftIdx, 'outStart'), '<');
         if (isLate && isEarly) return 'late-early';
         if (isLate) return 'late';
         if (isEarly) return 'early';
         return 'done';
       }
+
+      // 2. Ưu tiên hai: Có đơn Nghỉ phép (Approved)
+      // Bất kể là "Vắng" hay "Chỉ Check-in mà ko Check-out", nếu có đơn duyệt -> Tím
+      if (checkSessionLeave(dateStr, session, stats.leaves)) {
+        return 'leave';
+      }
+
+      // 3. Kiểm tra tương lai (để tránh báo đỏ cho ngày mai)
+      // Chỉ return future nếu không phải hôm nay
+      if (isFuture && dateStr !== today) return 'future';
+
+      // 4. Còn lại -> Vắng (Absent)
+      // Trường hợp "Có Check-in nhưng KHÔNG Check-out" sẽ rơi vào đây -> Đỏ
       return 'absent';
     };
 
     return {
-      morning: getStatus(rec.shifts.morning, 0),
-      afternoon: getStatus(rec.shifts.afternoon, 1),
+      morning: resolveStatus(rec?.shifts?.morning, 'morning', 0),
+      afternoon: resolveStatus(rec?.shifts?.afternoon, 'afternoon', 1),
     };
   };
 
   const getShiftDots = (statuses: { morning: string; afternoon: string }) => {
-    if (
-      statuses.morning === 'today' ||
-      statuses.morning === 'future' ||
-      statuses.morning === 'sunday'
-    )
-      return [];
+    if (statuses.morning === 'sunday') return [];
 
     const getDotColor = (status: string): string => {
       switch (status) {
@@ -208,10 +222,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
           return 'bg-cyan-500';
         case 'late-early':
           return 'bg-gray-600';
+
         case 'absent':
           return 'bg-red-500';
+
+        case 'future':
+          return 'bg-gray-200';
+        case 'today':
+          return 'bg-white';
         default:
-          return 'bg-gray-300';
+          return 'bg-transparent';
       }
     };
     return [{ color: getDotColor(statuses.morning) }, { color: getDotColor(statuses.afternoon) }];
@@ -232,7 +252,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
   };
 
   return (
-    <Box className="bg-gradient-to-br from-blue-600 to-purple-700 pt-6 pb-8 px-4 text-white rounded-b-[32px] shadow-xl mb-4">
+    <Box className="bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 pt-6 pb-8 px-4 text-white rounded-b-[32px] shadow-xl mb-4">
+      {/* ... (Phần Header Summary giữ nguyên) ... */}
       <Box className="bg-white/10 backdrop-blur-md rounded-2xl p-4 mb-6 border border-white/20 grid grid-cols-4 divide-x divide-white/20">
         <Box className="text-center px-1">
           <Text className="text-xl font-bold">{summary.worked}</Text>
@@ -243,7 +264,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
         <Box className="text-center px-1">
           <Text className="text-xl font-bold text-yellow-300">{summary.late}</Text>
           <Text size="xxSmall" className="opacity-80 uppercase mt-1">
-            Về Muộn
+            Đi Muộn
           </Text>
         </Box>
         <Box className="text-center px-1">
@@ -253,14 +274,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ user }) => {
           </Text>
         </Box>
         <Box className="text-center px-1">
-          <Text className="text-xl font-bold text-red-300">{summary.absent}</Text>
+          {/* Hiển thị số ngày nghỉ ở đây */}
+          <Text className="text-xl font-bold text-purple-300">{summary.leave}</Text>
           <Text size="xxSmall" className="opacity-80 uppercase mt-1">
-            Vắng mặt
+            Nghỉ Phép
           </Text>
         </Box>
       </Box>
 
       <Box className="bg-white rounded-2xl p-4 shadow-lg text-gray-800">
+        {/* ... (Phần điều hướng tháng giữ nguyên) ... */}
         <Box className="flex items-center justify-between mb-4">
           <Button
             onClick={() => navigateMonth('prev')}

@@ -1,16 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Box, Text } from 'zmp-ui';
 import TimeDisplay from '@/components/display/clock';
 import { useRecoilValue } from 'recoil';
-import {
-  todayRecordSelector,
-  currentShiftIndexSelector,
-  currentShiftSelector,
-} from '@/states/state';
+import { todayRecordSelector } from '@/states/state';
 import { useAttendanceActions } from '@/hooks/useAttendanceActions';
-// Import các phần mới vừa tạo
 import { useCurrentTime, useShiftStatus } from '@/hooks/useRollCallHooks';
 import { ActionButton } from '@/components/rollcall/ActionButton';
+import { config, timeStringToDateToday } from '@/lib/utils';
 
 type RollCallProps = {
   checkLocation: () => Promise<boolean>;
@@ -28,30 +24,31 @@ export const RollCall: React.FC<RollCallProps> = ({
   MAX_DISTANCE,
 }) => {
   const rec = useRecoilValue(todayRecordSelector);
-  const currentShiftIdx = useRecoilValue(currentShiftIndexSelector);
-  const currentShift = useRecoilValue(currentShiftSelector);
   const { checkIn, checkOut } = useAttendanceActions();
-
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Sử dụng hook mới
   const now = useCurrentTime();
 
-  const shiftKey = useMemo(
-    () => (currentShiftIdx === 0 ? 'morning' : currentShiftIdx === 1 ? 'afternoon' : null),
-    [currentShiftIdx]
+  const currentShiftData = (() => {
+    const nowMs = now.getTime();
+    for (let i = 0; i < config.shifts.length; i++) {
+      const s = config.shifts[i];
+      const endMs = timeStringToDateToday(s.checkOutEnd).getTime();
+      if (nowMs <= endMs) return { shift: s, key: i === 0 ? 'morning' : 'afternoon' };
+    }
+    return { shift: null, key: null };
+  })();
+
+  const status = useShiftStatus(
+    currentShiftData.shift,
+    currentShiftData.key as any,
+    Boolean(currentShiftData.key && rec?.shifts?.[currentShiftData.key]?.checkIn),
+    Boolean(currentShiftData.key && rec?.shifts?.[currentShiftData.key]?.checkOut),
+    now
   );
-
-  const hasInCurrentShift = Boolean(shiftKey && rec?.shifts?.[shiftKey]?.checkIn);
-  const hasOutCurrentShift = Boolean(shiftKey && rec?.shifts?.[shiftKey]?.checkOut);
-
-  // Sử dụng hook mới để lấy status
-  const status = useShiftStatus(currentShift, shiftKey, hasInCurrentShift, hasOutCurrentShift, now);
 
   const handleAttendance = async (type: 'in' | 'out') => {
     if (isProcessing || locationLoading) return;
     setIsProcessing(true);
-
     const isLocationValid = await checkLocation();
     if (isLocationValid) {
       try {
@@ -65,6 +62,37 @@ export const RollCall: React.FC<RollCallProps> = ({
   };
 
   const isLoading = locationLoading || isProcessing;
+
+  const isBefore = (timeStr: string) => now <= timeStringToDateToday(timeStr);
+  const isAfter = (timeStr: string) => now >= timeStringToDateToday(timeStr);
+  const isBetween = (start: string, end: string) => {
+    return now >= timeStringToDateToday(start) && now <= timeStringToDateToday(end);
+  };
+
+  const morningShift = config.shifts[0];
+  const afternoonShift = config.shifts[1];
+
+  const hasInMorning = Boolean(rec?.shifts?.morning?.checkIn);
+  const hasOutMorning = Boolean(rec?.shifts?.morning?.checkOut);
+
+  const canInMorning = !hasInMorning && isBefore(morningShift.checkInEnd);
+
+  const canOutMorning =
+    hasInMorning &&
+    !hasOutMorning &&
+    now >= timeStringToDateToday(morningShift.checkOutStart) &&
+    now < timeStringToDateToday(afternoonShift.checkInStart);
+
+  const hasInAfternoon = Boolean(rec?.shifts?.afternoon?.checkIn);
+  const hasOutAfternoon = Boolean(rec?.shifts?.afternoon?.checkOut);
+
+  const canInAfternoon =
+    !hasInAfternoon &&
+    now >= timeStringToDateToday(morningShift.checkOutStart) &&
+    isBefore(afternoonShift.checkInEnd);
+
+  const canOutAfternoon =
+    hasInAfternoon && !hasOutAfternoon && isAfter(afternoonShift.checkOutStart);
 
   const renderLocationStatus = () => {
     if (locationLoading)
@@ -85,7 +113,6 @@ export const RollCall: React.FC<RollCallProps> = ({
           Vị trí sẽ được kiểm tra khi bấm nút.
         </Text>
       );
-
     const isOutOfRange = distance > MAX_DISTANCE;
     return (
       <Text color={isOutOfRange ? 'red' : 'green'}>
@@ -106,32 +133,47 @@ export const RollCall: React.FC<RollCallProps> = ({
       </Box>
 
       <Box
-        className={`flex justify-center mt-10 rounded-lg p-3 text-center transition-all ${status.bg}`}
+        className={`flex justify-center mt-4 mb-6 rounded-lg p-3 text-center transition-all ${status.bg}`}
       >
         <Text className={`font-medium ${status.color} text-sm`}>{status.text}</Text>
       </Box>
 
-      <Box className="flex flex-row gap-2 pb-5 mt-3">
-        <ActionButton
-          onClick={() => handleAttendance('in')}
-          disabled={hasInCurrentShift || !status.canIn || isLoading}
-          label={
-            hasInCurrentShift ? 'Đã điểm danh vào' : status.canIn ? 'Điểm danh vào' : 'Chưa tới giờ'
-          }
-        />
-        <ActionButton
-          onClick={() => handleAttendance('out')}
-          disabled={!hasInCurrentShift || hasOutCurrentShift || !status.canOut || isLoading}
-          label={
-            !hasInCurrentShift
-              ? 'Chưa điểm danh vào'
-              : hasOutCurrentShift
-              ? 'Đã điểm danh về'
-              : status.canOut
-              ? 'Điểm danh về'
-              : 'Chưa tới giờ'
-          }
-        />
+      <Box className="flex flex-col gap-4 pb-5">
+        <Box>
+          <Text className="font-bold text-gray-500 text-xs mb-2 uppercase">Ca Sáng</Text>
+          <Box className="grid grid-cols-2 gap-3">
+            <ActionButton
+              onClick={() => handleAttendance('in')}
+              disabled={!canInMorning || isLoading}
+              label={hasInMorning ? 'Đã check in' : 'Check in'}
+              className={hasInMorning ? 'bg-green-100 text-green-700 border-green-200' : ''}
+            />
+            <ActionButton
+              onClick={() => handleAttendance('out')}
+              disabled={!canOutMorning || isLoading}
+              label={hasOutMorning ? 'Đã check out' : 'Check out'}
+              className={hasOutMorning ? 'bg-gray-100 text-gray-500' : ''}
+            />
+          </Box>
+        </Box>
+
+        <Box>
+          <Text className="font-bold text-gray-500 text-xs mb-2 uppercase">Ca Chiều</Text>
+          <Box className="grid grid-cols-2 gap-3">
+            <ActionButton
+              onClick={() => handleAttendance('in')}
+              disabled={!canInAfternoon || isLoading}
+              label={hasInAfternoon ? 'Đã check in' : 'Check in'}
+              className={hasInAfternoon ? 'bg-green-100 text-green-700 border-green-200' : ''}
+            />
+            <ActionButton
+              onClick={() => handleAttendance('out')}
+              disabled={!canOutAfternoon || isLoading}
+              label={hasOutAfternoon ? 'Đã check out' : 'Check out'}
+              className={hasOutAfternoon ? 'bg-gray-100 text-gray-500' : ''}
+            />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

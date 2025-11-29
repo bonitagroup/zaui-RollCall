@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { App, ZMPRouter } from 'zmp-ui';
+import { SnackbarProvider } from 'zmp-ui';
 import { RecoilRoot, useRecoilValue } from 'recoil';
 import Layout from './layout';
 import { attendanceLoadingState, userLoadingState } from '@/states/state';
@@ -14,7 +15,12 @@ const MyApp = () => {
     const userLoading = useRecoilValue(userLoadingState);
     const attendanceLoading = useRecoilValue(attendanceLoadingState);
 
-    if (userLoading || attendanceLoading) {
+    const initialLoadDoneRef = useRef(false);
+    if (!userLoading && !attendanceLoading && !initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+    }
+
+    if ((userLoading || attendanceLoading) && !initialLoadDoneRef.current) {
       return (
         <div className="flex justify-center items-center h-screen">
           <p className="text-gray-500">Đang tải dữ liệu...</p>
@@ -24,16 +30,22 @@ const MyApp = () => {
 
     return <>{children}</>;
   };
+
+  const ZMPSnackbarProvider = SnackbarProvider as any;
+
   return (
     <RecoilRoot>
       <App>
-        <AppInitializer>
-          <ZMPRouter>
-            <Layout />
-          </ZMPRouter>
-        </AppInitializer>
+        <ZMPSnackbarProvider>
+          <AppInitializer>
+            <ZMPRouter>
+              <Layout />
+            </ZMPRouter>
+          </AppInitializer>
+        </ZMPSnackbarProvider>
       </App>
     </RecoilRoot>
   );
 };
+
 export default MyApp;
