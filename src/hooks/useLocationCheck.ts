@@ -2,26 +2,14 @@ import { useState } from 'react';
 import { getLocation, getAccessToken } from 'zmp-sdk/apis';
 import api from '../lib/api';
 
-const REFERENCE_LAT = 21.5863937;
-const REFERENCE_LON = 105.8424984;
-const MAX_DISTANCE = 20;
-
-interface ApiResponse {
+interface CheckLocationResponse {
   success: boolean;
-  data?: any;
   error?: string;
-}
-
-function getDistanceM(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const R = 6371000;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  message?: string;
+  distance?: number;
+  data?: {
+    distance: number;
+  };
 }
 
 export const useLocationCheck = () => {
@@ -37,39 +25,39 @@ export const useLocationCheck = () => {
     try {
       const { token } = await getLocation({
         fail: (err) => {
-          throw new Error(`Zalo: ${err.message || 'Không lấy được vị trí.'}`);
-        },
-      });
-      const accessToken = await getAccessToken({
-        fail: (err) => {
-          throw new Error(`Zalo: ${err.message || 'Không lấy được xác thực.'}`);
+          throw new Error(`Zalo: ${err.message || 'Không lấy được vị trí GPS.'}`);
         },
       });
 
-      const data: ApiResponse = await api.post('/location/convert-token', {
+      const accessToken = await getAccessToken({
+        fail: (err) => {
+          throw new Error(`Zalo: ${err.message || 'Lỗi xác thực người dùng.'}`);
+        },
+      });
+
+      const res: CheckLocationResponse = await api.post('/location/convert-token', {
         token: token,
         accessToken: accessToken,
       });
 
-      if (!data || !data.success) {
-        throw new Error(data.error || 'Lỗi server khi chuyển đổi token');
+      if (!res || !res.success) {
+        if (typeof res.distance === 'number') {
+          setDistance(res.distance);
+        } else if (res.data && typeof res.data.distance === 'number') {
+          setDistance(res.data.distance);
+        }
+
+        throw new Error(res.error || 'Vị trí không hợp lệ.');
       }
 
-      const { latitude, longitude } = data.data;
-      const latNum = parseFloat(latitude);
-      const lonNum = parseFloat(longitude);
-
-      const dist = getDistanceM(latNum, lonNum, REFERENCE_LAT, REFERENCE_LON);
-      setDistance(dist);
-
-      if (dist > MAX_DISTANCE) {
-        throw new Error(`Vị trí quá xa (${dist.toFixed(0)}m). Chỉ chấp nhận <= ${MAX_DISTANCE}m.`);
+      if (res.data && typeof res.data.distance === 'number') {
+        setDistance(res.data.distance);
       }
 
       setLoading(false);
       return true;
     } catch (err: any) {
-      console.error('checkLocation error:', err);
+      console.error('Check location failed:', err);
       setError(err.message);
       setLoading(false);
       return false;
@@ -81,6 +69,5 @@ export const useLocationCheck = () => {
     error,
     distance,
     checkLocation,
-    MAX_DISTANCE,
   };
 };

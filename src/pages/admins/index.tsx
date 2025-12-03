@@ -13,20 +13,15 @@ import TaskManagement from './task/TaskManagement';
 const AdminDashboard = () => {
   const admin = useRecoilValue(userState);
 
-  // Thay thế recoil activeTab bằng searchParams
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Lấy activeTab hiện tại từ URL (ví dụ: ?tab=salary)
   const activeTab = searchParams.get('tab') || '';
 
-  // Hàm chuyển tab: Đẩy vào lịch sử duyệt web
   const handleSwitchTab = (key) => {
     setSearchParams({ tab: key });
   };
 
-  // Hàm quay lại menu: Thay vì set state, ta dùng navigate(-1) để lùi lịch sử
-  // Điều này giúp đồng bộ với nút Back vật lý
   const handleBackToMenu = () => {
     navigate(-1);
   };
@@ -87,14 +82,12 @@ const AdminDashboard = () => {
       case 'leave':
         return <LeaveManagement onBack={handleBackToMenu} />;
       default:
-        // Mặc định hiển thị Menu
         return (
           <Box className="p-4 pb-20">
             <Box className="space-y-3">
               {menuItems.map((item) => (
                 <Box
                   key={item.key}
-                  // SỬ DỤNG HÀM CHUYỂN TAB MỚI
                   onClick={() => handleSwitchTab(item.key)}
                   className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-all duration-200 hover:shadow-md"
                 >
@@ -128,7 +121,6 @@ const AdminDashboard = () => {
 
   return (
     <Page className="flex flex-col min-h-screen bg-gray-50 ">
-      {/* Chỉ hiện Header khi ở trang Menu (activeTab rỗng) */}
       {!activeTab && (
         <Box className="bg-gray-100 shadow-sm py-6 px-4">
           <Box className="flex items-center justify-start pt-8">

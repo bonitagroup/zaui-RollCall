@@ -7,6 +7,7 @@ import {
   isNowInRange,
   timeStringToDateToday,
   normalizeDate,
+  checkSessionLeave,
 } from '@/lib/utils';
 import { AttendanceRecord, ShiftConfig } from '@/types/rollcalls';
 
@@ -107,9 +108,6 @@ export const canCheckOutNowSelector = selector<boolean>({
   },
 });
 
-//---ADMIN--------------------------------
-
-// Lọc danh sách user dựa trên searchTerm
 export const filteredUsersState = selector<User[]>({
   key: 'filteredUsersState',
   get: ({ get }) => {
@@ -127,7 +125,6 @@ export const filteredUsersState = selector<User[]>({
   },
 });
 
-// Tách danh sách đã lọc thành 2 nhóm
 export const splitUsersState = selector({
   key: 'splitUsersState',
   get: ({ get }) => {
@@ -140,7 +137,6 @@ export const splitUsersState = selector({
   },
 });
 
-// Tính toán số liệu cho AdminStats
 export const adminStatsState = selector({
   key: 'adminStatsState',
   get: ({ get }) => {
@@ -153,25 +149,21 @@ export const adminStatsState = selector({
   },
 });
 
-// Nhân viên đang được chọn để xem lịch sử
 export const selectedAttendanceUserState = atom<User | null>({
   key: 'selectedAttendanceUserState',
   default: null,
 });
 
-// Trạng thái hiển thị Sheet chọn nhân viên
 export const attendanceSheetVisibleState = atom<boolean>({
   key: 'attendanceSheetVisibleState',
   default: false,
 });
 
-// Trạng thái đang tải danh sách nhân viên
 export const attendanceUsersLoadingState = atom<boolean>({
   key: 'attendanceUsersLoadingState',
   default: false,
 });
 
-// Selector lọc danh sách nhân viên đã có chức vụ
 export const validEmployeesSelector = selector<User[]>({
   key: 'validEmployeesSelector',
   get: ({ get }) => {
@@ -180,24 +172,21 @@ export const validEmployeesSelector = selector<User[]>({
   },
 });
 
-// Atom lưu ngày hiện tại đang xem trên lịch
 export const calendarDateState = atom<Date>({
   key: 'calendarDateState',
   default: new Date(),
 });
 
-// Atom lưu dữ liệu thô từ API (Records + Leaves)
 export const monthlyStatsState = atom<{ records: AttendanceRecord[]; leaves: any[] }>({
   key: 'monthlyStatsState',
   default: { records: [], leaves: [] },
 });
 
-// Selector tính toán Summary
 export const calendarSummarySelector = selector({
   key: 'calendarSummarySelector',
   get: ({ get }) => {
     const currentDate = get(calendarDateState);
-    const stats = get(monthlyStatsState);
+    const { records, leaves } = get(monthlyStatsState);
 
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
@@ -207,18 +196,15 @@ export const calendarSummarySelector = selector({
     let early = 0;
     let absent = 0;
     let leave = 0;
-    let halfDays = 0;
 
     const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
     const endOfMonth = new Date(currentYear, currentMonth, 0);
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const getShiftTime = (shiftIdx: number, type: 'deadline' | 'outStart') => {
       const s = config.shifts[shiftIdx];
-      if (type === 'deadline') return s.checkInDeadline;
-      return s.checkOutStart;
+      return type === 'deadline' ? s.checkInDeadline : s.checkOutStart;
     };
 
     const compareTime = (
@@ -237,65 +223,100 @@ export const calendarSummarySelector = selector({
     for (let d = new Date(startOfMonth); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
       const dateStr = normalizeDate(d);
       const isSunday = d.getDay() === 0;
+
       if (isSunday) continue;
-      if (d.getTime() >= today.getTime()) {
-        continue;
-      }
+      if (d.getTime() > today.getTime()) continue;
 
-      const rec = stats.records.find((r) => r.date === dateStr);
-      const leaveReq = stats.leaves.find(
-        (l: any) => new Date(l.start_date) <= d && new Date(l.end_date) >= d
-      );
+      const rec = records.find((r) => r.date === dateStr);
 
-      if (leaveReq) {
-        leave++;
-        continue;
-      }
+      const processSession = (
+        shiftData: any,
+        shiftIdx: number,
+        sessionName: 'morning' | 'afternoon'
+      ) => {
+        const hasLeave = checkSessionLeave(dateStr, sessionName, leaves);
+        if (hasLeave) {
+          leave += 0.5;
+          return;
+        }
 
-      if (d > today) {
-        continue;
-      }
+        if (shiftData && shiftData.checkIn && shiftData.checkOut) {
+          worked += 0.5;
 
-      if (!rec) {
-        absent++;
-        continue;
-      }
-
-      const am = rec.shifts.morning;
-      const pm = rec.shifts.afternoon;
-
-      const checkShiftErrors = (shift: any, idx: number) => {
-        if (!shift.checkIn || !shift.checkOut) return;
-
-        const isLate = compareTime(shift.checkIn, getShiftTime(idx, 'deadline'), '>');
-        const isEarly = compareTime(shift.checkOut, getShiftTime(idx, 'outStart'), '<');
-
-        if (isLate) late++;
-        if (isEarly) early++;
+          if (compareTime(shiftData.checkIn, getShiftTime(shiftIdx, 'deadline'), '>')) {
+            late++;
+          }
+          if (compareTime(shiftData.checkOut, getShiftTime(shiftIdx, 'outStart'), '<')) {
+            early++;
+          }
+        } else {
+          absent += 0.5;
+        }
       };
 
-      checkShiftErrors(am, 0);
-      checkShiftErrors(pm, 1);
+      processSession(rec?.shifts?.morning, 0, 'morning');
 
-      const hasMorning = !!(am.checkIn && am.checkOut);
-      const hasAfternoon = !!(pm.checkIn && pm.checkOut);
-
-      const hasMorningHalf = am.checkIn && !am.checkOut;
-      const hasAfternoonHalf = pm.checkIn && !pm.checkOut;
-
-      let dayWorked = 0;
-
-      if (hasMorning) dayWorked += 0.5;
-      else if (hasMorningHalf) dayWorked += 0.5;
-
-      if (hasAfternoon) dayWorked += 0.5;
-      else if (hasAfternoonHalf) dayWorked += 0.5;
-
-      if (dayWorked === 1) worked++;
-      else if (dayWorked === 0.5) halfDays += 0.5;
-      else absent++;
+      processSession(rec?.shifts?.afternoon, 1, 'afternoon');
     }
 
-    return { worked, late, early, leave, absent, halfDays, totalWorked: worked + halfDays };
+    return {
+      worked,
+      late,
+      early,
+      leave,
+      absent,
+      halfDays: 0,
+      totalWorked: worked,
+    };
+  },
+});
+
+export const tasksState = atom<any[]>({
+  key: 'tasksState',
+  default: [],
+});
+
+export const taskGroupsSelector = selector({
+  key: 'taskGroupsSelector',
+  get: ({ get }) => {
+    const tasks = get(tasksState);
+    return {
+      todo: tasks.filter((t) => ['pending', 'rework'].includes(t.status)),
+      history: tasks.filter((t) => ['submitted', 'completed'].includes(t.status)),
+    };
+  },
+});
+
+export const taskStatsSelector = selector({
+  key: 'taskStatsSelector',
+  get: ({ get }) => {
+    const tasks = get(tasksState);
+    return {
+      total: tasks.length,
+      todo: tasks.filter((t) => ['pending', 'rework'].includes(t.status)).length,
+      done: tasks.filter((t) => t.status === 'completed').length,
+      rework: tasks.filter((t) => t.status === 'rework').length,
+    };
+  },
+});
+
+export const salaryListState = atom<any[]>({
+  key: 'salaryListState',
+  default: [],
+});
+
+export const totalSalaryPayoutSelector = selector({
+  key: 'totalSalaryPayoutSelector',
+  get: ({ get }) => {
+    const list = get(salaryListState);
+    return list.reduce((sum, item) => sum + (item.financials?.finalSalary || 0), 0);
+  },
+});
+
+export const validSalaryListSelector = selector({
+  key: 'validSalaryListSelector',
+  get: ({ get }) => {
+    const list = get(salaryListState);
+    return list.filter((item) => item.user.role && item.user.role !== 'user');
   },
 });

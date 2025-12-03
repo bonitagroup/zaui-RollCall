@@ -26,7 +26,6 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     console.error('API Error:', error.response || error.message);
 
-    // Xử lý nếu gặp lỗi HTML (Do Tunnel chặn hoặc Server lỗi)
     if (
       error.response &&
       typeof error.response.data === 'string' &&

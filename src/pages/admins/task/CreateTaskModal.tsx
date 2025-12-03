@@ -53,6 +53,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ visible, onClose, onS
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Mô tả chi tiết công việc..."
+          showCount
+          maxLength={1000}
+          rows={4}
         />
 
         <Box>

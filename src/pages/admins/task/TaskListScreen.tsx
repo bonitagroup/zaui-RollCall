@@ -106,13 +106,13 @@ const ListTab: React.FC<ListTabProps> = ({
                   <StatusBadge status={task.status} />
                 </Box>
 
-                <Text className="text-gray-600 text-sm mb-4 line-clamp-2 font-light">
+                <Text className="text-gray-600 text-sm mb-2 line-clamp-2 font-light">
                   {task.description}
                 </Text>
 
-                <Box className="flex justify-between items-end border-t border-gray-50 pt-3 mt-1">
+                <Box className="flex justify-between items-end border-t border-gray-50 mt-1">
                   <Box>
-                    <Box className="flex items-center gap-1 mb-2">
+                    <Box className="flex items-center gap-1 mb-1 mt-2">
                       <Icon icon="zi-clock-1" size={14} className="text-red-400" />
                       <Text size="xSmall" className="text-red-500 font-medium">
                         {formatDateTime(task.due_date)}
@@ -129,49 +129,48 @@ const ListTab: React.FC<ListTabProps> = ({
                       </Text>
                     </Box>
                   </Box>
+                </Box>
+                <Box className="flex mt-3 justify-end gap-2">
+                  <Button
+                    size="small"
+                    variant="tertiary"
+                    className="text-blue-600 bg-blue-50 hover:bg-blue-100 border-none"
+                    onClick={() => onViewDetail(task)}
+                  >
+                    Chi tiết
+                  </Button>
 
-                  <Box className="flex gap-2">
-                    <Button
-                      size="small"
-                      variant="tertiary"
-                      className="text-blue-600 bg-blue-50 hover:bg-blue-100 border-none"
-                      onClick={() => onViewDetail(task)}
-                    >
-                      Chi tiết
-                    </Button>
-
-                    {currentTab === 'active' && (
-                      <>
-                        {isSubmitted ? (
-                          <>
-                            <Button
-                              size="small"
-                              className="bg-orange-500 text-white min-w-[70px] shadow-sm shadow-orange-200"
-                              onClick={() => onApprove(task.id, 'rework')}
-                            >
-                              Làm lại
-                            </Button>
-                            <Button
-                              size="small"
-                              className="bg-green-500 text-white min-w-[70px] shadow-sm shadow-green-200"
-                              onClick={() => onApprove(task.id, 'completed')}
-                            >
-                              Duyệt
-                            </Button>
-                          </>
-                        ) : (
+                  {currentTab === 'active' && (
+                    <>
+                      {isSubmitted ? (
+                        <>
                           <Button
                             size="small"
-                            variant="secondary"
-                            className="text-red-500 bg-red-50 border-none hover:bg-red-100"
-                            onClick={() => onDelete(task.id)}
+                            className="bg-orange-500 text-white min-w-[70px] shadow-sm shadow-orange-200"
+                            onClick={() => onApprove(task.id, 'rework')}
                           >
-                            Xóa
+                            Làm lại
                           </Button>
-                        )}
-                      </>
-                    )}
-                  </Box>
+                          <Button
+                            size="small"
+                            className="bg-green-500 text-white min-w-[70px] shadow-sm shadow-green-200"
+                            onClick={() => onApprove(task.id, 'completed')}
+                          >
+                            Duyệt
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="secondary"
+                          className="text-red-500 bg-red-50 border-none hover:bg-red-100 "
+                          onClick={() => onDelete(task.id)}
+                        >
+                          Xóa
+                        </Button>
+                      )}
+                    </>
+                  )}
                 </Box>
               </Box>
             );

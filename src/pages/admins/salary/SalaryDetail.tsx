@@ -97,9 +97,9 @@ const SalaryDetail = () => {
     <Page className="bg-gray-100 min-h-screen flex flex-col">
       <Box className="bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 px-4 py-4 pt-12 flex items-center space-x-3 shadow-sm sticky top-0 z-50">
         <Box onClick={() => navigate(-1)} className="active:opacity-50">
-          <Icon icon="zi-arrow-left" className="text-gray-800 text-2xl" />
+          <Icon icon="zi-arrow-left" className="text-white text-2xl" />
         </Box>
-        <Text className="text-gray-800 font-bold text-xl">Chi tiết phiếu lương</Text>
+        <Text className="text-white font-bold text-xl">Chi tiết phiếu lương</Text>
       </Box>
 
       <Box className="flex-1 p-4 overflow-y-auto pb-36">
@@ -199,13 +199,18 @@ const SalaryDetail = () => {
               <Box className="bg-gray-50 p-3 rounded-md mt-2 flex flex-col gap-2 transition-all duration-300 animate-fadeIn">
                 {displayLateFine > 0 && (
                   <div className="flex justify-between text-red-500 text-xs">
-                    <span>• Phạt phút muộn ({stats.totalLateMinutes}p)</span>
+                    <span>
+                      • Phạt muộn ({stats.lateCount} lần - {stats.totalLateMinutes}p)
+                    </span>
                     <span>-{formatCurrency(displayLateFine)}</span>
                   </div>
                 )}
+
                 {displayEarlyFine > 0 && (
                   <div className="flex justify-between text-red-500 text-xs">
-                    <span>• Phạt phút sớm ({stats.totalEarlyMinutes}p)</span>
+                    <span>
+                      • Phạt về sớm ({stats.earlyCount} lần - {stats.totalEarlyMinutes}p)
+                    </span>
                     <span>-{formatCurrency(displayEarlyFine)}</span>
                   </div>
                 )}

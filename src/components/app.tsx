@@ -16,6 +16,7 @@ const MyApp = () => {
     const attendanceLoading = useRecoilValue(attendanceLoadingState);
 
     const initialLoadDoneRef = useRef(false);
+
     if (!userLoading && !attendanceLoading && !initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
     }

@@ -55,12 +55,7 @@ export const useAttendanceInit = () => {
 
     const runFetch = async () => {
       setLoading(true);
-      try {
-        await fetchHistory(zaloId);
-      } catch (e) {
-      } finally {
-        setLoading(false);
-      }
+      await fetchHistory(zaloId).finally(() => setLoading(false));
     };
 
     runFetch();

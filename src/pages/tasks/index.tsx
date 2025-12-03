@@ -1,73 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Page, Box, Text, Icon, useSnackbar, Modal } from 'zmp-ui';
 import { useRecoilValue } from 'recoil';
-import { userState } from '@/states/state';
-import api from '@/lib/api';
+import { taskGroupsSelector, taskStatsSelector } from '@/states/state';
+import { useTaskData } from '@/hooks/useTaskData';
 import TaskItem from './TaskItem';
 import { useNavigate } from 'react-router-dom';
+import api from '@/lib/api';
 
 const MyTasks = ({ onBack }: { onBack?: () => void }) => {
-  const user = useRecoilValue(userState);
-  const { openSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const { openSnackbar } = useSnackbar();
 
-  const [tasks, setTasks] = useState<any[]>([]);
+  const { loading, fetchTasks } = useTaskData(true);
+
+  const { todo: todoList, history: historyList } = useRecoilValue(taskGroupsSelector);
+  const stats = useRecoilValue(taskStatsSelector);
+
   const [activeTab, setActiveTab] = useState('todo');
-  const [loading, setLoading] = useState(false);
-
   const [submitModal, setSubmitModal] = useState<{ visible: boolean; taskId: number | null }>({
     visible: false,
     taskId: null,
   });
 
-  const fetchMyTasks = async () => {
-    if (!user?.zalo_id) return;
-    setLoading(true);
-    try {
-      const res: any = await api.get('/admin/task/list', {
-        params: { zalo_id: user.zalo_id, type: 'my_tasks' },
-      });
-      if (res.success) {
-        setTasks(res.data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch tasks:', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMyTasks();
-  }, [user?.zalo_id]);
-
   const confirmSubmit = async () => {
     if (!submitModal.taskId) return;
     try {
       await api.put('/admin/task/update', { id: submitModal.taskId, status: 'submitted' });
-      openSnackbar({
-        text: 'Nộp bài thành công! Đang chờ duyệt 🚀',
-        type: 'success',
-        icon: true,
-        duration: 3000,
-      });
-      fetchMyTasks();
+      openSnackbar({ text: 'Nộp bài thành công!', type: 'success', icon: true });
+      fetchTasks();
     } catch (error) {
       openSnackbar({ text: 'Lỗi khi nộp bài', type: 'error' });
     } finally {
       setSubmitModal({ visible: false, taskId: null });
     }
   };
-
-  const todoList = tasks.filter((t) => ['pending', 'rework'].includes(t.status));
-  const historyList = tasks.filter((t) => ['submitted', 'completed'].includes(t.status));
-
-  const stats = {
-    todo: todoList.length,
-    done: tasks.filter((t) => t.status === 'completed').length,
-    rework: tasks.filter((t) => t.status === 'rework').length,
-  };
-
   return (
     <Page className="bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-screen flex flex-col">
       <Box className="bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 p-6 pt-14 pb-20 rounded-b-[48px] shadow-2xl relative overflow-hidden">
@@ -84,9 +50,6 @@ const MyTasks = ({ onBack }: { onBack?: () => void }) => {
           )}
           <Box className="flex-1">
             <Text className="text-white font-bold text-2xl mb-1">Công việc của tôi</Text>
-            <Text className="text-blue-100 text-sm opacity-90">
-              {loading ? 'Đang tải...' : `${tasks.length} công việc được giao`}
-            </Text>
           </Box>
         </Box>
 

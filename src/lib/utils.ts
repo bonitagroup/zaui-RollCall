@@ -196,26 +196,19 @@ export const checkSessionLeave = (
 ) => {
   if (!leaves || leaves.length === 0) return false;
 
-  // Chuyển dateStr hiện tại về timestamp đầu ngày
   const currentT = new Date(dateStr).setHours(0, 0, 0, 0);
 
   return leaves.some((l) => {
-    // 1. Chỉ tính đơn đã duyệt
     if (l.status !== 'approved') return false;
 
-    // Chuyển ngày bắt đầu/kết thúc đơn về timestamp đầu ngày
     const startT = new Date(l.start_date).setHours(0, 0, 0, 0);
     const endT = new Date(l.end_date).setHours(0, 0, 0, 0);
 
-    // Nếu ngày hiện tại nằm ngoài khoảng ngày nghỉ -> False
     if (currentT < startT || currentT > endT) return false;
 
-    // Nếu nằm trọn vẹn ở giữa -> True
     if (currentT > startT && currentT < endT) return true;
 
-    // Logic cho ngày BẮT ĐẦU
     if (currentT === startT) {
-      // Nếu trùng ngày (nghỉ 1 ngày hoặc trong ngày)
       if (startT === endT) {
         if (l.start_session === 'morning' && l.end_session === 'morning' && session === 'morning')
           return true;
@@ -225,18 +218,15 @@ export const checkSessionLeave = (
           session === 'afternoon'
         )
           return true;
-        if (l.start_session === 'morning' && l.end_session === 'afternoon') return true; // Cả ngày
+        if (l.start_session === 'morning' && l.end_session === 'afternoon') return true;
         return false;
       }
-      // Chuỗi ngày: Bắt đầu sáng -> Nghỉ cả ngày; Bắt đầu chiều -> Chiều nghỉ
       if (l.start_session === 'morning') return true;
       if (l.start_session === 'afternoon' && session === 'afternoon') return true;
       return false;
     }
 
-    // Logic cho ngày KẾT THÚC
     if (currentT === endT) {
-      // Kết thúc chiều -> Nghỉ cả ngày; Kết thúc sáng -> Sáng nghỉ
       if (l.end_session === 'afternoon') return true;
       if (l.end_session === 'morning' && session === 'morning') return true;
       return false;
@@ -244,4 +234,49 @@ export const checkSessionLeave = (
 
     return false;
   });
+};
+
+export const createAbsentRecord = (dateStr: string): AttendanceRecord =>
+  ({
+    date: dateStr,
+    shifts: {
+      morning: { checkIn: null, checkOut: null },
+      afternoon: { checkIn: null, checkOut: null },
+    },
+    isAbsent: true,
+  } as any);
+
+export const fillMissingDays = (records: AttendanceRecord[]): AttendanceRecord[] => {
+  if (!records || records.length === 0) return [];
+
+  const sortedByDateAsc = [...records].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  const firstRecordDate = new Date(sortedByDateAsc[0].date);
+
+  const recordMap = new Map<string, AttendanceRecord>();
+  records.forEach((r) => recordMap.set(r.date, r));
+
+  const today = new Date();
+  const result: AttendanceRecord[] = [];
+  const current = new Date(today);
+
+  while (normalizeDate(current) >= normalizeDate(firstRecordDate)) {
+    const dateStr = normalizeDate(current);
+    const isSunday = current.getDay() === 0;
+    const isFuture = dateStr > normalizeDate(new Date());
+
+    if (recordMap.has(dateStr)) {
+      result.push(recordMap.get(dateStr)!);
+    } else {
+      if (!isSunday && !isFuture) {
+        result.push(createAbsentRecord(dateStr));
+      }
+    }
+
+    current.setDate(current.getDate() - 1);
+  }
+
+  return result;
 };

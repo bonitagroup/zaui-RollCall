@@ -43,7 +43,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, isHistory = false, onViewDeta
         icon: 'zi-warning-solid',
       };
 
-    if (diffHours < 24)
+    if (diffHours < 4)
       return {
         color: 'text-yellow-600',
         bg: 'bg-yellow-50',

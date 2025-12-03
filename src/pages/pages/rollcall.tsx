@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Text } from 'zmp-ui';
 import TimeDisplay from '@/components/display/clock';
 import { useRecoilValue } from 'recoil';
-import { todayRecordSelector } from '@/states/state';
+import {
+  todayRecordSelector,
+  currentShiftSelector,
+  currentShiftIndexSelector,
+} from '@/states/state';
 import { useAttendanceActions } from '@/hooks/useAttendanceActions';
 import { useCurrentTime, useShiftStatus } from '@/hooks/useRollCallHooks';
 import { ActionButton } from '@/components/rollcall/ActionButton';
@@ -24,25 +28,20 @@ export const RollCall: React.FC<RollCallProps> = ({
   MAX_DISTANCE,
 }) => {
   const rec = useRecoilValue(todayRecordSelector);
+  const currentShift = useRecoilValue(currentShiftSelector);
+  const currentShiftIdx = useRecoilValue(currentShiftIndexSelector);
+
+  const shiftKey = currentShiftIdx === 0 ? 'morning' : currentShiftIdx === 1 ? 'afternoon' : null;
+
   const { checkIn, checkOut } = useAttendanceActions();
   const [isProcessing, setIsProcessing] = useState(false);
   const now = useCurrentTime();
 
-  const currentShiftData = (() => {
-    const nowMs = now.getTime();
-    for (let i = 0; i < config.shifts.length; i++) {
-      const s = config.shifts[i];
-      const endMs = timeStringToDateToday(s.checkOutEnd).getTime();
-      if (nowMs <= endMs) return { shift: s, key: i === 0 ? 'morning' : 'afternoon' };
-    }
-    return { shift: null, key: null };
-  })();
-
   const status = useShiftStatus(
-    currentShiftData.shift,
-    currentShiftData.key as any,
-    Boolean(currentShiftData.key && rec?.shifts?.[currentShiftData.key]?.checkIn),
-    Boolean(currentShiftData.key && rec?.shifts?.[currentShiftData.key]?.checkOut),
+    currentShift,
+    shiftKey,
+    Boolean(shiftKey && rec?.shifts?.[shiftKey as 'morning' | 'afternoon']?.checkIn),
+    Boolean(shiftKey && rec?.shifts?.[shiftKey as 'morning' | 'afternoon']?.checkOut),
     now
   );
 
@@ -50,6 +49,7 @@ export const RollCall: React.FC<RollCallProps> = ({
     if (isProcessing || locationLoading) return;
     setIsProcessing(true);
     const isLocationValid = await checkLocation();
+
     if (isLocationValid) {
       try {
         if (type === 'in') await checkIn();
@@ -65,9 +65,6 @@ export const RollCall: React.FC<RollCallProps> = ({
 
   const isBefore = (timeStr: string) => now <= timeStringToDateToday(timeStr);
   const isAfter = (timeStr: string) => now >= timeStringToDateToday(timeStr);
-  const isBetween = (start: string, end: string) => {
-    return now >= timeStringToDateToday(start) && now <= timeStringToDateToday(end);
-  };
 
   const morningShift = config.shifts[0];
   const afternoonShift = config.shifts[1];
@@ -76,7 +73,6 @@ export const RollCall: React.FC<RollCallProps> = ({
   const hasOutMorning = Boolean(rec?.shifts?.morning?.checkOut);
 
   const canInMorning = !hasInMorning && isBefore(morningShift.checkInEnd);
-
   const canOutMorning =
     hasInMorning &&
     !hasOutMorning &&
@@ -88,7 +84,7 @@ export const RollCall: React.FC<RollCallProps> = ({
 
   const canInAfternoon =
     !hasInAfternoon &&
-    now >= timeStringToDateToday(morningShift.checkOutStart) &&
+    now >= timeStringToDateToday(afternoonShift.checkInStart) &&
     isBefore(afternoonShift.checkInEnd);
 
   const canOutAfternoon =
@@ -115,7 +111,7 @@ export const RollCall: React.FC<RollCallProps> = ({
       );
     const isOutOfRange = distance > MAX_DISTANCE;
     return (
-      <Text color={isOutOfRange ? 'red' : 'green'}>
+      <Text className={isOutOfRange ? 'text-red-500' : 'text-green-500'}>
         📍 Bạn đang {isOutOfRange ? 'ở ngoài' : 'trong'} phạm vi (<b>{distance.toFixed(0)}m</b>)
       </Text>
     );

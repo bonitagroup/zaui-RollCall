@@ -40,15 +40,12 @@ const MultiImagePicker: React.FC<MultiImagePickerProps> = ({
               onChange([...images, ...response.data.urls]);
             }
           } catch {
-            // Silent fail
           }
         },
         fail: () => {
-          // User cancelled or error
         },
       });
     } catch {
-      // API error
     }
   }, [images, onChange]);
 

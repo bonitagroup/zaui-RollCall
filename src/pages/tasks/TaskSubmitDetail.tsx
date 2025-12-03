@@ -123,6 +123,8 @@ const TaskSubmitDetail = () => {
             rows={4}
             className="mb-4"
             disabled={isReadOnly}
+            showCount
+            maxLength={1000}
           />
 
           {!isReadOnly ? (

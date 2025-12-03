@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'; // 1. Thêm useMemo
 import { Box, Text, Icon } from 'zmp-ui';
 import { User } from '@/types/users';
 import api from '@/lib/api';
@@ -7,10 +7,10 @@ import {
   formatTimeDisplay,
   mapDbRecordToFrontend,
   recomputeState,
-  calculateShiftStatus,
-  checkSessionLeave,
+  fillMissingDays, // 2. Import hàm fillMissingDays
 } from '@/lib/utils';
 import { AttendanceRecord } from '@/types/rollcalls';
+import { ShiftStatusBadge } from '@/components/common/ShiftStatusBadge';
 
 const HistoryList: React.FC<{ user: User }> = ({ user }) => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -20,6 +20,7 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
   const LIMIT = 20;
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
+  // Lấy danh sách đơn nghỉ phép
   useEffect(() => {
     const fetchLeaves = async () => {
       if (!user.zalo_id) return;
@@ -37,6 +38,7 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
     fetchLeaves();
   }, [user.zalo_id]);
 
+  // Load dữ liệu từ API
   const loadHistory = useCallback(
     async (offset: number) => {
       if (loading || !user.zalo_id) return;
@@ -63,12 +65,14 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
     [user.zalo_id, loading]
   );
 
+  // Reset khi đổi user
   useEffect(() => {
     setRecords([]);
     setHasMore(true);
     loadHistory(0);
   }, [user.zalo_id]);
 
+  // Infinite Scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -84,45 +88,30 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
     };
   }, [hasMore, loading, records.length, loadHistory]);
 
-  const renderShiftStatus = (
-    checkIn: string | null,
-    checkOut: string | null,
-    shiftIndex: 0 | 1,
-    dateStr: string
-  ) => {
-    if (checkIn && checkOut) {
-      const status = calculateShiftStatus(checkIn, checkOut, shiftIndex);
-      return <Text className={`text-xs font-bold ${status.color}`}>{status.text}</Text>;
-    }
-
-    const sessionName = shiftIndex === 0 ? 'morning' : 'afternoon';
-    const isLeave = checkSessionLeave(dateStr, sessionName, leaves);
-
-    if (isLeave) {
-      return <Text className="text-xs font-bold text-purple-600">Nghỉ phép</Text>;
-    }
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (dateStr > todayStr) {
-      return <Text className="text-xs font-bold text-gray-400">--</Text>;
-    }
-
-    return <Text className="text-xs font-bold text-red-500">Vắng</Text>;
-  };
+  // 3. LOGIC MỚI: Tự động lấp đầy ngày vắng
+  const displayRecords = useMemo(() => {
+    // Hàm này sẽ lấy records hiện có, tự động chèn thêm các ngày bị thiếu (Vắng mặt)
+    return fillMissingDays(records);
+  }, [records]);
 
   return (
     <Box className="px-4 pb-20">
       <Text className="font-bold text-lg mb-4 text-gray-800 pl-1">Lịch sử chi tiết</Text>
       <Box className="space-y-3">
-        {records.map((rec, idx) => (
+        {/* Render displayRecords thay vì records */}
+        {displayRecords.map((rec, idx) => (
           <Box
             key={`${rec.date}-${idx}`}
-            className="flex flex-col w-full shadow-md bg-white rounded-xl p-4 border border-gray-100"
+            className={`flex flex-col w-full shadow-md bg-white rounded-xl p-4 border ${
+              // Nếu là bản ghi tự tạo (vắng mặt) thì đổi màu viền/nền nhẹ để phân biệt
+              (rec as any).isAbsent ? 'border-red-200 bg-red-50/20' : 'border-gray-100'
+            }`}
           >
             <Text className="font-bold text-lg mb-3 pb-3 border-b border-gray-200 text-gray-800">
               {formatDateDisplay(rec.date)}
             </Text>
 
+            {/* CA SÁNG */}
             <Box className="flex flex-row justify-between mb-3 pb-3 border-b border-gray-50 items-center">
               <Box>
                 <Box className="flex items-center mb-1">
@@ -134,14 +123,17 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
                   {formatTimeDisplay(rec.shifts.morning.checkOut || undefined)}
                 </Text>
               </Box>
-              {renderShiftStatus(
-                rec.shifts.morning.checkIn,
-                rec.shifts.morning.checkOut,
-                0,
-                rec.date
-              )}
+
+              <ShiftStatusBadge
+                checkIn={rec.shifts.morning.checkIn}
+                checkOut={rec.shifts.morning.checkOut}
+                shiftIndex={0}
+                dateStr={rec.date}
+                leaves={leaves}
+              />
             </Box>
 
+            {/* CA CHIỀU */}
             <Box className="flex flex-row justify-between items-center">
               <Box>
                 <Box className="flex items-center mb-1">
@@ -153,12 +145,14 @@ const HistoryList: React.FC<{ user: User }> = ({ user }) => {
                   {formatTimeDisplay(rec.shifts.afternoon.checkOut || undefined)}
                 </Text>
               </Box>
-              {renderShiftStatus(
-                rec.shifts.afternoon.checkIn,
-                rec.shifts.afternoon.checkOut,
-                1,
-                rec.date
-              )}
+
+              <ShiftStatusBadge
+                checkIn={rec.shifts.afternoon.checkIn}
+                checkOut={rec.shifts.afternoon.checkOut}
+                shiftIndex={1}
+                dateStr={rec.date}
+                leaves={leaves}
+              />
             </Box>
           </Box>
         ))}
